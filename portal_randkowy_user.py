@@ -1,9 +1,8 @@
 from __future__ import annotations
-from datetime import date, datetime
-from email.policy import default
+from datetime import datetime, UTC
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 import uuid
 
 class Gender(str, Enum):
@@ -86,25 +85,26 @@ class Interests(str, Enum):
     SPIRITUALITY = "spirituality"
 
 class Photo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     url: str
     is_main: bool = False
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        from_attributes = True
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 class UserProfile(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     """
     Profil widoczny dla ewentualnych dopasowań.
     """
-    bio: Optional[str] = Field(None, max_lenght = 500, descrition = "Wpisz swoje bio.")
-    interests: List[Interests] = Field(default_factory=list, max_lenght = 15)
-    photo: List[Photo] = Field(default_factory = list, max_lenght = 6)
+    bio: Optional[str] = Field(None, max_length=500, description="Wpisz swoje bio.")
+    interests: List[Interests] = Field(default_factory=list, max_length=15)
+    photo: List[Photo] = Field(default_factory=list, max_length=6)
     relationship_goals: List[RelationshipGoals] = None
-    height_cm: Optional[int] = Field(None, ge = 120, le = 250, descrition = "Wpisz wzrost w cm.")
-    city: Optional[str] = Field(None, max_lenght = 100)
-    country: str = Field(default = "Polska", max_lenght = 100)
+    height_cm: Optional[int] = Field(None, ge=120, le=250, description="Wpisz wzrost w cm.")
+    city: Optional[str] = Field(None, max_length=100)
+    country: str = Field(default="Polska", max_length=100)
 
     @field_validator("interests")
     @classmethod
@@ -116,12 +116,10 @@ class UserProfile(BaseModel):
     @property
     def main_photo(self) -> Optional[Photo]:
         main = [p for p in self.photo if p.is_main]
-        return main[0] if main else (self_photo[0] if self.photo else None)
-
-    class Config:
-        from_attributes = True
+        return main[0] if main else (self.photo[0] if self.photo else None)
 
 class User(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     """
     Główny model użytkownika łączący dane konta z profilem.
     """
@@ -138,5 +136,26 @@ class User(BaseModel):
     is_verified: bool = False
     created_at: datetime = Field(default_factory = datetime.utcnow)
     last_seen: Optional[datetime] = None
+
+    @property
+    def age(self) -> int:
+        today = date.today()
+        born = self.date_of_birth
+        return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def must_be_an_adult(cls, v: date):
+        today = date.today()
+        age = today.year - v.year - ((today.month, today.day) < (v.month, v.day))
+        if age < 18:
+            raise ValueError("Użytkownik musi mieć conajmniej 18 lat.")
+        if age > 110:
+            raise ValueError("Została podana nieprawidłowa data urodzenia.")
+        return v
+
 
 

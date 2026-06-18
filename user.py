@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime, UTC
+from datetime import datetime, date, UTC
 from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict

@@ -25,7 +25,7 @@ class Message(BaseModel):
     conversation_id: str
     sender_id: str
 
-    type: MessageType.TEXT
+    type: MessageType = MessageType.TEXT
     content: str = Field(..., min_length=1, max_length=2500)
     send_at: datetime = Field(default_factory=datetime.now)
     delivery_at: Optional[datetime] = None
@@ -60,7 +60,7 @@ class Conversation(BaseModel):
     def add_message(self, message: Message) -> None:
         """Dodaje wiadomość i aktualizuje timestamp ostatniej aktywności."""
         self.messages.append(message)
-        self.last_message_at = message.sent_at
+        self.last_message_at = message.send_at
 
     @property
     def last_message(self) -> Optional[Message]:
